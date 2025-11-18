@@ -1,10 +1,9 @@
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from typing import List
 
-from schemas import Inquiry
+from schemas import Inquiry, Lead
 from database import create_document, get_documents
 
 app = FastAPI()
@@ -70,7 +69,7 @@ def test_database():
     return response
 
 # ----------------------
-# Custom Jewelry Inquiries API
+# Legacy demo endpoints (not used by TWIP, safe to keep)
 # ----------------------
 
 @app.post("/inquiries")
@@ -85,7 +84,29 @@ def create_inquiry(inquiry: Inquiry):
 def list_inquiries(limit: int = 20):
     try:
         docs = get_documents("inquiry", limit=limit)
-        # Convert ObjectIds to strings
+        for d in docs:
+            if "_id" in d:
+                d["id"] = str(d.pop("_id"))
+        return {"items": docs}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+# ----------------------
+# TWIP Leads API
+# ----------------------
+
+@app.post("/leads")
+def create_lead(lead: Lead):
+    try:
+        inserted_id = create_document("lead", lead)
+        return {"status": "success", "id": inserted_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/leads")
+def list_leads(limit: int = 50):
+    try:
+        docs = get_documents("lead", limit=limit)
         for d in docs:
             if "_id" in d:
                 d["id"] = str(d.pop("_id"))
